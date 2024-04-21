@@ -15,6 +15,7 @@ jobs:
           python_ver: '3.12'
           spec: 'main.spec'
           python_arch: 'x64'
+          upload_exe_with_name: 'CNC-Hole-CAM'
           is_uploaded: true
 
       - name: Upload release asset
