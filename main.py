@@ -1,19 +1,21 @@
-from tkinter import *
+from datetime import datetime
+from cnc_hole_lib import get_gcode
 
-root = Tk()
-root.title("Hello World!")
-root.geometry('300x40')
+variables = {
+    'platform': 'snapmaker',
+    'holes_coords': [
+        {'id': 1, 'X': 1.0, 'Y': 2.0},
+        {'id': 2, 'X': 3.0, 'Y': 4.0},
+        {'id': 3, 'X': 5.0, 'Y': 6.0},
+    ],
+    'idling_h': 30.0,
+    'X_max': 30.0,
+    'Y_max': 30.0,
+    'lift_h': 1.0,
+    'lowering_iters': 4,
+    'depth_material': 1.0,
+    'depth_step': 0.05,
+    'current_date': datetime.now().strftime("%a %b %d %Y %H:%M:%S")
+}
 
-def button_clicked():
-    print("Hello World!")
-
-def close():
-    root.destroy()
-    root.quit()
-
-button = Button(root, text="Press Me", command=button_clicked)
-button.pack(fill=BOTH)
-
-root.protocol('WM_DELETE_WINDOW', close)
-
-root.mainloop()
+print(get_gcode(variables))
