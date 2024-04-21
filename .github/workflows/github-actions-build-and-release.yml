@@ -6,7 +6,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
       - name: Create Executable
@@ -14,8 +14,12 @@ jobs:
         with:
           python_ver: '3.12'
           spec: 'main.spec'
-          upload_exe_with_name: 'CNC-Hole-CAM'
           python_arch: 'x64'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CNC-Hole-CAM
+          path: dist/CNC-Hole-CAM.exe
 
       - name: Upload release asset
         id: upload-release-asset
@@ -25,5 +29,5 @@ jobs:
         with:
           upload_url: ${{ github.event.release.upload_url }}
           asset_path: dist/CNC-Hole-CAM.exe
-          asset_name: CNC-Hole-CAM
+          asset_name: CNC-Hole-CAM.exe
           asset_content_type: application/octet-stream
