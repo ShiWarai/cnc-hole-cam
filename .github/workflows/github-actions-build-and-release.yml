@@ -18,7 +18,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: CNC-Hole-CAM
-          path: dist/windows/CNC-Hole-CAM.exe
+          path: dist/CNC-Hole-CAM.exe
 
 
       - name: Upload release asset
