@@ -1,0 +1,33 @@
+name: Release EXE with PyInstaller
+
+on:
+  release:
+      types: [published]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: PyInstaller Windows
+        uses: JackMcKew/pyinstaller-action-windows@main
+        with:
+          path: .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CNC-Hole-CAM
+          path: dist/windows/CNC-Hole-CAM.exe
+
+
+      - name: Upload release asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: dist/windows/CNC-Hole-CAM.exe
+          asset_name: CNC-Hole-CAM.exe
+          asset_content_type: application/octet-stream
