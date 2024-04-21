@@ -9,11 +9,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
-      - name: PyInstaller Windows
-        uses: JackMcKew/pyinstaller-action-windows@main
+      - name: Create Executable
+        uses: sayyid5416/pyinstaller@v1.2.0
         with:
-          path: .
+          python_ver: '3.12'
+          spec: 'main.spec'
 
       - uses: actions/upload-artifact@v4
         with:
