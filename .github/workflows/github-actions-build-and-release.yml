@@ -15,6 +15,7 @@ jobs:
           python_ver: '3.12'
           spec: 'main.spec'
           upload_exe_with_name: 'CNC-Hole-CAM'
+          python_arch: 'x64'
 
       - name: Upload release asset
         id: upload-release-asset
@@ -23,6 +24,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: dist/CNC-Hole-CAM
+          asset_path: dist/CNC-Hole-CAM.exe
           asset_name: CNC-Hole-CAM
           asset_content_type: application/octet-stream
