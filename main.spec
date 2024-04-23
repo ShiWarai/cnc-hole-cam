@@ -7,7 +7,7 @@ a = Analysis(
     datas=[
             ("templates", 'templates' ),
           ],
-    hiddenimports=["Jinja2"],
+    hiddenimports=["jinja2"],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
