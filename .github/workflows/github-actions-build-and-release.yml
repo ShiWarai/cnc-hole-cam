@@ -9,16 +9,12 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
       - name: Create executable
         uses: sayyid5416/pyinstaller@v1.2.0
         with:
           python_ver: '3.12'
           spec: 'main.spec'
+          requirements: 'requirements.txt'
           python_arch: 'x64'
           upload_exe_with_name: 'CNC-Hole-CAM'
           is_uploaded: true
