@@ -1,0 +1,13 @@
+; Begin {{ hole.id }} hole
+G0 Z3.00 F{{ thrust_v }}
+G0 X{{ hole.X }} Y{{ hole.Y }} ; Set XY
+G0 Z{{ lift_h }}
+M3 P100
+{% for depth in depth_steps_array %}
+{% for i in range(1, lowering_iters+1) %}
+G1 Z-{{ depth }} F{{ plunge_v }}
+G0 Z{{ lift_h }} F{{ work_v }}
+{% endfor %}
+{% endfor %}
+M5
+; End {{ hole.id }} hole

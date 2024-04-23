@@ -1,0 +1,6 @@
+{% include platform+'/metadata.j2' %}
+{% include platform+'/begin.j2' %}
+{% for hole in holes_coords %}
+{% include platform+'/holes.j2' %}
+{% endfor %}
+{% include platform+'/end.j2' %}
