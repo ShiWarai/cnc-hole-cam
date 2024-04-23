@@ -1,9 +1,8 @@
 from datetime import datetime
 from cnc_hole_lib import get_gcode
 import sys
+from tkinter import Tk, ttk, TclError, filedialog, messagebox, Canvas, Frame, Scrollbar
 
-import tkinter as tk
-from tkinter import ttk, scrolledtext, TclError
 
 class HoleWidget(ttk.Frame):
     def __init__(self, parent, *args, **kwargs):
@@ -21,10 +20,14 @@ class HoleWidget(ttk.Frame):
         self.button_remove = ttk.Button(self, text="Удалить", command=self.destroy)
         self.button_remove.grid(row=0, column=4)
 
-    def get_coordinates(self):
-        return [self.entry_x.get(), self.entry_y.get()]
+    def get_coordinates(self) -> list[float]:
+        return [float(self.entry_x.get()), float(self.entry_y.get())]
+
 
 class App(ttk.Frame):
+    def open_file(self):
+        self.image_icon = filedialog.askopenfilename()
+
     def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
         self.grid_columnconfigure(0, weight=1)
@@ -39,17 +42,36 @@ class App(ttk.Frame):
         self.button_add = ttk.Button(self.left_frame, text="+", command=self.add_hole)
         self.button_add.pack(side="bottom")
 
-        self.hole_container = scrolledtext.ScrolledText(self.left_frame)
-        self.hole_container.pack(side="top", fill="both", expand=False)
+        self.holes_canvas = Canvas(self.left_frame, borderwidth=0, background="#ffffff")
+        self.holes_frame = Frame(self.holes_canvas, background="#ffffff")
+        self.holes_scrollbar = Scrollbar(self.left_frame, orient="vertical", command=self.holes_canvas.yview)
+        self.holes_canvas.configure(yscrollcommand=self.holes_scrollbar.set)
+        self.holes_scrollbar.pack(side="right", fill="y")
+        self.holes_canvas.pack(side="left", fill="both", expand=True)
+        self.holes_canvas.create_window((4, 4), window=self.holes_frame, anchor="nw")
+        self.holes_frame.bind("<Configure>", self.on_holes_frame_configure)
+
+        self.button_open_image = ttk.Button(self.right_frame, text="Выбрать изображение", command=self.open_file)
+        self.button_open_image.pack()
+
+        ttk.Label(self.right_frame, text="Максимальный размер по X:").pack()
+        self.x_size = ttk.Entry(self.right_frame)
+        self.x_size.insert(0, "100.0")
+        self.x_size.pack()
+
+        ttk.Label(self.right_frame, text="Максимальный размер по Y:").pack()
+        self.y_size = ttk.Entry(self.right_frame)
+        self.y_size.insert(0, "100.0")
+        self.y_size.pack()
 
         ttk.Label(self.right_frame, text="Скорость холостого хода:").pack()
         self.thrust_speed = ttk.Entry(self.right_frame)
-        self.thrust_speed.insert(0, "300")
+        self.thrust_speed.insert(0, "500")
         self.thrust_speed.pack()
 
         ttk.Label(self.right_frame, text="Скорость работы:").pack()
         self.work_speed = ttk.Entry(self.right_frame)
-        self.work_speed.insert(0, "200")
+        self.work_speed.insert(0, "300")
         self.work_speed.pack()
 
         ttk.Label(self.right_frame, text="Скорость углубления:").pack()
@@ -74,16 +96,20 @@ class App(ttk.Frame):
 
         ttk.Label(self.right_frame, text="Глубина материала:").pack()
         self.plunge_depth = ttk.Entry(self.right_frame)
-        self.plunge_depth.insert(0, "1.0")
+        self.plunge_depth.insert(0, "1.6")
         self.plunge_depth.pack()
 
         self.button_create_gcode = ttk.Button(self.right_frame, text="Создать gcode", command=self.create_gcode)
-        self.button_create_gcode.pack(side="bottom")
+        self.button_create_gcode.pack()
 
         self.hole_widgets = []
+        self.image_icon = ""
+
+    def on_holes_frame_configure(self, event):
+        self.holes_canvas.configure(scrollregion=self.holes_canvas.bbox("all"))
 
     def add_hole(self):
-        hole_widget = HoleWidget(self.hole_container)
+        hole_widget = HoleWidget(self.holes_frame)
         hole_widget.pack()
 
         self.hole_widgets.append(hole_widget)
@@ -95,26 +121,29 @@ class App(ttk.Frame):
         for widget in self.hole_widgets:
             try:
                 xy = widget.get_coordinates()
-                id+=1
-                holes_coords.append({'id': id, 'X': float(xy[0]), 'Y': float(xy[1])})
+                id += 1
+                holes_coords.append({'id': id, 'X': xy[0], 'Y': xy[1]})
             except TclError:
                 pass
+
+        if id == 0:
+            messagebox.showerror("Нет координат", "Координаты не указаны для создания g-code")
 
         variables = {
             'platform': 'snapmaker',
             'holes_coords': holes_coords,
             'idling_h': 30.0,
-            'X_size': 30.0,
-            'Y_size': 30.0,
+            'X_size': float(self.x_size.get()),
+            'Y_size': float(self.y_size.get()),
             'lift_h': float(self.lift_h.get()),
             'lowering_iters': int(self.plunge_iterations.get()),
             'depth_material': float(self.plunge_depth.get()),
-            'plunge_step': float(self.plunge_speed.get()),
+            'plunge_step': float(self.plunge_step.get()),
             'thrust_v': float(self.thrust_speed.get()),
             'work_v': float(self.work_speed.get()),
             'plunge_v': float(self.plunge_speed.get()),
             'current_date': datetime.now().strftime("%a %b %d %Y %H:%M:%S"),
-            'image_path': 'photo.png',
+            'image_path': self.image_icon,
         }
 
         print(variables)
@@ -123,8 +152,8 @@ class App(ttk.Frame):
             f.write(get_gcode(variables))
 
 
-root = tk.Tk()
-root.geometry('500x400')  # Устанавливаем размер окна 600x400
+root = Tk()
+root.geometry('500x420')  # Устанавливаем размер окна 600x400
 root.resizable(True, True)  # Запрещаем изменение размера окна
 root.title("CNC Hole CAM")
 
@@ -132,6 +161,7 @@ root.title("CNC Hole CAM")
 if len(sys.argv) >= 2:
     if sys.argv[1] == '--build':
         from TkDeb.TkDeb import Debugger
+
         Debugger(root)
 
 app = App(root)
