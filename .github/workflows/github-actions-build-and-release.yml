@@ -1,4 +1,4 @@
-name: Release EXE with PyInstaller
+name: Building EXE for "${{ github.event.release.name }}" release
 
 on:
   release:
