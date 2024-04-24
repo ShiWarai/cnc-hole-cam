@@ -216,7 +216,7 @@ class App(ttk.Frame):
             print(variables)
 
             with open(cnc_file_path, 'w') as f:
-                f.write(get_gcode(variables))
+                f.write(get_gcode(variables, optimize=True))
 
             messagebox.showinfo("Файл создан", "Создан g-code по пути: " + cnc_file_path)
 
