@@ -23,7 +23,7 @@ def get_gcode(args: dict) -> str:
         # Чтения файла иконки
         with open(args['image_path'], 'rb') as f:
             image_bytes = f.read()
-        img_str = "data:image/png;base64," + base64.b64encode(image_bytes).decode()
+        img_str = ";thumbnail: data:image/png;base64," + base64.b64encode(image_bytes).decode()
 
     args['max_x'] = max(args['holes_coords'], key=lambda x: x['X'])['X']
     args['max_y'] = max(args['holes_coords'], key=lambda x: x['Y'])['Y']
@@ -32,9 +32,9 @@ def get_gcode(args: dict) -> str:
     args['min_y'] = min(args['holes_coords'], key=lambda x: x['Y'])['Y']
     args['min_z'] = -args['depth_material']
     try:
-        args['image'] = img_str
+        args['thumbnail_image'] = img_str
     except NameError:
-        args['image'] = ''
+        args['thumbnail_image'] = ''
     args['depth_steps_array'] = depth_steps_array
 
     # Загрузка шаблонов

@@ -78,7 +78,7 @@ class App(ttk.Frame):
         self.y_size.insert(0, "100.0")
         self.y_size.pack()
 
-        ttk.Label(self.right_frame, text="Выбор центра отсчёта").pack()
+        ttk.Label(self.right_frame, text="Выбор конечного центра отсчёта").pack()
         self.zero_selector = ttk.Combobox(self.right_frame, values=["центр", "левый-верхний угол"])
         self.zero_selector.current(0)
         self.zero_selector.pack()
@@ -108,9 +108,9 @@ class App(ttk.Frame):
         self.plunge_iterations.insert(0, "4")
         self.plunge_iterations.pack()
 
-        ttk.Label(self.right_frame, text="Высота подъёма между отверстиями").pack()
+        ttk.Label(self.right_frame, text="Высота подъёма между шагами").pack()
         self.lift_h = ttk.Entry(self.right_frame)
-        self.lift_h.insert(0, "1.0")
+        self.lift_h.insert(0, "0.5")
         self.lift_h.pack()
 
         ttk.Label(self.right_frame, text="Глубина материала").pack()
@@ -206,9 +206,9 @@ class App(ttk.Frame):
                 'lowering_iters': int(self.plunge_iterations.get()),
                 'depth_material': round(float(self.plunge_depth.get()),2),
                 'plunge_step': round(float(self.plunge_step.get()),2),
-                'thrust_v': float(self.thrust_speed.get()),
-                'work_v': float(self.work_speed.get()),
-                'plunge_v': float(self.plunge_speed.get()),
+                'thrust_v': int(self.thrust_speed.get()),
+                'work_v': int(self.work_speed.get()),
+                'plunge_v': int(self.plunge_speed.get()),
                 'current_date': datetime.now().strftime("%a %b %d %Y %H:%M:%S"),
                 'image_path': self.image_icon,
             }
