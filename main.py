@@ -1,8 +1,9 @@
 from datetime import datetime
 import re
-from cnc_hole_lib import get_gcode
 import sys
 from tkinter import Tk, ttk, TclError, filedialog, messagebox, Canvas, Frame, Scrollbar
+
+from cnc_hole_lib import get_gcode
 
 
 class HoleWidget(ttk.Frame):
@@ -62,40 +63,47 @@ class App(ttk.Frame):
         self.holes_canvas.create_window((4, 4), window=self.holes_frame, anchor="nw")
         self.holes_frame.bind("<Configure>", self.on_holes_frame_configure)
 
-        self.button_open_image = ttk.Button(self.right_frame, text="Выбрать изображение", command=self.open_file)
-        self.button_open_image.pack()
+        ttk.Label(self.right_frame, text="Выбор платформы").pack()
+        self.platform_selector = ttk.Combobox(self.right_frame, values=["snapmaker",])
+        self.platform_selector.current(0)
+        self.platform_selector.pack()
 
-        ttk.Label(self.right_frame, text="Максимальный размер по X:").pack()
+        ttk.Label(self.right_frame, text="Максимальный размер по X").pack()
         self.x_size = ttk.Entry(self.right_frame)
         self.x_size.insert(0, "100.0")
         self.x_size.pack()
 
-        ttk.Label(self.right_frame, text="Максимальный размер по Y:").pack()
+        ttk.Label(self.right_frame, text="Максимальный размер по Y").pack()
         self.y_size = ttk.Entry(self.right_frame)
         self.y_size.insert(0, "100.0")
         self.y_size.pack()
 
-        ttk.Label(self.right_frame, text="Скорость холостого хода:").pack()
+        ttk.Label(self.right_frame, text="Выбор центра отсчёта").pack()
+        self.zero_selector = ttk.Combobox(self.right_frame, values=["центр", "левый-верхний угол"])
+        self.zero_selector.current(0)
+        self.zero_selector.pack()
+
+        ttk.Label(self.right_frame, text="Скорость холостого хода").pack()
         self.thrust_speed = ttk.Entry(self.right_frame)
         self.thrust_speed.insert(0, "500")
         self.thrust_speed.pack()
 
-        ttk.Label(self.right_frame, text="Скорость работы:").pack()
+        ttk.Label(self.right_frame, text="Скорость работы").pack()
         self.work_speed = ttk.Entry(self.right_frame)
         self.work_speed.insert(0, "300")
         self.work_speed.pack()
 
-        ttk.Label(self.right_frame, text="Скорость углубления:").pack()
+        ttk.Label(self.right_frame, text="Скорость углубления").pack()
         self.plunge_speed = ttk.Entry(self.right_frame)
         self.plunge_speed.insert(0, "100")
         self.plunge_speed.pack()
 
-        ttk.Label(self.right_frame, text="Шаг сверления:").pack()
+        ttk.Label(self.right_frame, text="Шаг сверления").pack()
         self.plunge_step = ttk.Entry(self.right_frame)
         self.plunge_step.insert(0, "0.05")
         self.plunge_step.pack()
 
-        ttk.Label(self.right_frame, text="Кол-во итераций сверления:").pack()
+        ttk.Label(self.right_frame, text="Кол-во итераций сверления").pack()
         self.plunge_iterations = ttk.Entry(self.right_frame)
         self.plunge_iterations.insert(0, "4")
         self.plunge_iterations.pack()
@@ -105,10 +113,13 @@ class App(ttk.Frame):
         self.lift_h.insert(0, "1.0")
         self.lift_h.pack()
 
-        ttk.Label(self.right_frame, text="Глубина материала:").pack()
+        ttk.Label(self.right_frame, text="Глубина материала").pack()
         self.plunge_depth = ttk.Entry(self.right_frame)
-        self.plunge_depth.insert(0, "1.6")
+        self.plunge_depth.insert(0, "1.0")
         self.plunge_depth.pack()
+
+        self.button_open_image = ttk.Button(self.right_frame, text="Выбрать изображение", command=self.open_file)
+        self.button_open_image.pack()
 
         self.button_create_gcode = ttk.Button(self.right_frame, text="Создать gcode", command=self.create_gcode)
         self.button_create_gcode.pack()
@@ -127,10 +138,10 @@ class App(ttk.Frame):
 
     # Обработчики событий
     def open_file(self):
-        self.image_icon = filedialog.askopenfilename()
+        self.image_icon = filedialog.askopenfilename(filetypes=[("PNG files", "*.png")])
 
     def open_drl(self):
-        drl_file_path = filedialog.askopenfilename()
+        drl_file_path = filedialog.askopenfilename(filetypes=[("DRL files", "*.drl")])
 
         if drl_file_path != '':
             self.clear_hole_widgets()
@@ -150,56 +161,68 @@ class App(ttk.Frame):
             print(holes)
 
             for hole in holes:
-                hole_widget = self.add_hole_widget()
-                hole_widget.entry_x.insert(0, str(hole[0]))
-                hole_widget.entry_y.insert(0, str(hole[1]))
+                self.add_hole_widget(hole[0], hole[1])
 
-    def add_hole_widget(self) -> HoleWidget:
+    def add_hole_widget(self, x=0.0, y=0.0) -> HoleWidget:
         hole_widget = HoleWidget(self.holes_frame)
+        hole_widget.entry_x.insert(0, str(x))
+        hole_widget.entry_y.insert(0, str(y))
         hole_widget.pack()
 
         return hole_widget
 
     def create_gcode(self):
-        holes_coords = list()
+        cnc_file_path = filedialog.asksaveasfilename(defaultextension=".cnc", filetypes=[("CNC files", "*.cnc")])
 
-        hole_id = 0
-        for widget in HoleWidget.hole_widgets:
-            try:
-                xy = widget.get_coordinates()
-                hole_id += 1
-                holes_coords.append({'id': hole_id, 'X': xy[0], 'Y': xy[1]})
-            except TclError:
-                pass
+        if cnc_file_path != '':
+            holes_coords = list()
 
-        if hole_id == 0:
-            messagebox.showerror("Нет координат", "Координаты не указаны для создания g-code")
+            hole_id = 0
+            zero_type = self.zero_selector.get()
+            x_size = round(float(self.x_size.get()),2)
+            y_size = round(float(self.y_size.get()),2)
+            for widget in HoleWidget.hole_widgets:
+                try:
+                    xy = widget.get_coordinates()
+                    hole_id += 1
+                    if zero_type == 'центр':
+                        holes_coords.append({'id': hole_id, 'X': round(xy[0]-x_size/2,2), 'Y': round(xy[1]+y_size/2,2)})
+                    else:
+                        holes_coords.append({'id': hole_id, 'X': round(xy[0],2), 'Y': round(xy[1],2)})
 
-        variables = {
-            'platform': 'snapmaker',
-            'holes_coords': holes_coords,
-            'idling_h': 30.0,
-            'X_size': float(self.x_size.get()),
-            'Y_size': float(self.y_size.get()),
-            'lift_h': float(self.lift_h.get()),
-            'lowering_iters': int(self.plunge_iterations.get()),
-            'depth_material': float(self.plunge_depth.get()),
-            'plunge_step': float(self.plunge_step.get()),
-            'thrust_v': float(self.thrust_speed.get()),
-            'work_v': float(self.work_speed.get()),
-            'plunge_v': float(self.plunge_speed.get()),
-            'current_date': datetime.now().strftime("%a %b %d %Y %H:%M:%S"),
-            'image_path': self.image_icon,
-        }
+                except TclError:
+                    pass
 
-        print(variables)
+            if hole_id == 0:
+                messagebox.showerror("Нет координат", "Координаты не указаны для создания g-code")
 
-        with open('file.cnc', 'w') as f:
-            f.write(get_gcode(variables))
+            variables = {
+                'platform': self.platform_selector.get(),
+                'holes_coords': holes_coords,
+                'idling_h': 30.0,
+                'X_size': x_size,
+                'Y_size': y_size,
+                'lift_h': float(self.lift_h.get()),
+                'lowering_iters': int(self.plunge_iterations.get()),
+                'depth_material': round(float(self.plunge_depth.get()),2),
+                'plunge_step': round(float(self.plunge_step.get()),2),
+                'thrust_v': float(self.thrust_speed.get()),
+                'work_v': float(self.work_speed.get()),
+                'plunge_v': float(self.plunge_speed.get()),
+                'current_date': datetime.now().strftime("%a %b %d %Y %H:%M:%S"),
+                'image_path': self.image_icon,
+            }
+
+            print(variables)
+
+            with open(cnc_file_path, 'w') as f:
+                f.write(get_gcode(variables))
+
+            messagebox.showinfo("Файл создан", "Создан g-code по пути: " + cnc_file_path)
 
 
 root = Tk()
-root.geometry('500x420')  # Устанавливаем размер окна 600x400
+root.geometry('500x500')  # Устанавливаем размер окна 600x400
 root.resizable(True, True)  # Запрещаем изменение размера окна
 root.title("CNC Hole CAM")
 

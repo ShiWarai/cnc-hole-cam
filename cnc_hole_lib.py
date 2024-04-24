@@ -1,7 +1,7 @@
-from jinja2 import Environment, FileSystemLoader
-from frange import frange
 import base64
 import os, sys
+from jinja2 import Environment, FileSystemLoader
+from frange import frange
 
 
 def resource_path(relative_path: str) -> str:
