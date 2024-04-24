@@ -1,10 +1,14 @@
 from datetime import datetime
+import re
 from cnc_hole_lib import get_gcode
 import sys
 from tkinter import Tk, ttk, TclError, filedialog, messagebox, Canvas, Frame, Scrollbar
 
 
 class HoleWidget(ttk.Frame):
+
+    hole_widgets = []
+
     def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
         self.grid_columnconfigure(0, weight=1)
@@ -17,16 +21,20 @@ class HoleWidget(ttk.Frame):
         self.entry_y = ttk.Entry(self, width=6)
         self.entry_y.grid(row=0, column=3)
 
-        self.button_remove = ttk.Button(self, text="Удалить", command=self.destroy)
+        self.button_remove = ttk.Button(self, text="Удалить", command=self.remove_hole)
         self.button_remove.grid(row=0, column=4)
+
+        HoleWidget.hole_widgets.append(self)
 
     def get_coordinates(self) -> list[float]:
         return [float(self.entry_x.get()), float(self.entry_y.get())]
 
+    def remove_hole(self):
+        HoleWidget.hole_widgets.remove(self)
+        self.destroy()
+
 
 class App(ttk.Frame):
-    def open_file(self):
-        self.image_icon = filedialog.askopenfilename()
 
     def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
@@ -39,7 +47,10 @@ class App(ttk.Frame):
         self.right_frame = ttk.Frame(self)
         self.right_frame.grid(row=0, column=1, sticky="nsew")
 
-        self.button_add = ttk.Button(self.left_frame, text="+", command=self.add_hole)
+        self.open_drl_button = ttk.Button(self.left_frame, text="Открыть .DRL", command=self.open_drl)
+        self.open_drl_button.pack(side="top")
+
+        self.button_add = ttk.Button(self.left_frame, text="Добавить отверстие", command=self.add_hole_widget)
         self.button_add.pack(side="bottom")
 
         self.holes_canvas = Canvas(self.left_frame, borderwidth=0, background="#ffffff")
@@ -102,31 +113,66 @@ class App(ttk.Frame):
         self.button_create_gcode = ttk.Button(self.right_frame, text="Создать gcode", command=self.create_gcode)
         self.button_create_gcode.pack()
 
-        self.hole_widgets = []
         self.image_icon = ""
 
     def on_holes_frame_configure(self, event):
         self.holes_canvas.configure(scrollregion=self.holes_canvas.bbox("all"))
 
-    def add_hole(self):
+    def clear_hole_widgets(self):
+        for hole_widget in HoleWidget.hole_widgets:
+            hole_widget: HoleWidget
+            hole_widget.destroy()
+
+        HoleWidget.hole_widgets.clear()
+
+    # Обработчики событий
+    def open_file(self):
+        self.image_icon = filedialog.askopenfilename()
+
+    def open_drl(self):
+        drl_file_path = filedialog.askopenfilename()
+
+        if drl_file_path != '':
+            self.clear_hole_widgets()
+
+            holes = []
+            pattern = re.compile(r'X(-?\d+)Y(-?\d+)')
+            with open(drl_file_path, 'r') as f:
+                lines = f.readlines()
+
+                for line in lines:
+                    match = pattern.search(line)
+                    if match:
+                        x = float(match.group(1)[:-3] + '.' + match.group(1)[-3:])
+                        y = float(match.group(2)[:-3] + '.' + match.group(2)[-3:])
+                        holes.append((x, y))
+
+            print(holes)
+
+            for hole in holes:
+                hole_widget = self.add_hole_widget()
+                hole_widget.entry_x.insert(0, str(hole[0]))
+                hole_widget.entry_y.insert(0, str(hole[1]))
+
+    def add_hole_widget(self) -> HoleWidget:
         hole_widget = HoleWidget(self.holes_frame)
         hole_widget.pack()
 
-        self.hole_widgets.append(hole_widget)
+        return hole_widget
 
     def create_gcode(self):
         holes_coords = list()
 
-        id = 0
-        for widget in self.hole_widgets:
+        hole_id = 0
+        for widget in HoleWidget.hole_widgets:
             try:
                 xy = widget.get_coordinates()
-                id += 1
-                holes_coords.append({'id': id, 'X': xy[0], 'Y': xy[1]})
+                hole_id += 1
+                holes_coords.append({'id': hole_id, 'X': xy[0], 'Y': xy[1]})
             except TclError:
                 pass
 
-        if id == 0:
+        if hole_id == 0:
             messagebox.showerror("Нет координат", "Координаты не указаны для создания g-code")
 
         variables = {
