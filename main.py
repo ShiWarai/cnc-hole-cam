@@ -6,6 +6,27 @@ from tkinter import Tk, ttk, TclError, filedialog, messagebox, Canvas, Frame, Sc
 from cnc_hole_lib import get_gcode
 
 
+def find_key_by_value(dictionary, value):
+    for key, val in dictionary.items():
+        if val == value:
+            return key
+    return None
+
+
+def parse_holesizes(lines):
+    pattern = re.compile(r'(T\d+)C(\d+\.\d+)')
+    holesizes = {}
+
+    for line in lines:
+        match = pattern.search(line)
+        if match:
+            tool = match.group(1)
+            size = float(match.group(2))
+            holesizes[tool] = size
+
+    return holesizes
+
+
 class HoleWidget(ttk.Frame):
 
     hole_widgets = []
@@ -51,6 +72,9 @@ class App(ttk.Frame):
         self.open_drl_button = ttk.Button(self.left_frame, text="Открыть .DRL", command=self.open_drl)
         self.open_drl_button.pack(side="top")
 
+        self.button_clear = ttk.Button(self.left_frame, text="Очистить", command=self.clear_hole_widgets)
+        self.button_clear.pack(side="bottom")
+
         self.button_add = ttk.Button(self.left_frame, text="Добавить отверстие", command=self.add_hole_widget)
         self.button_add.pack(side="bottom")
 
@@ -67,6 +91,12 @@ class App(ttk.Frame):
         self.platform_selector = ttk.Combobox(self.right_frame, values=["snapmaker",])
         self.platform_selector.current(0)
         self.platform_selector.pack()
+
+        ttk.Label(self.right_frame, text="Выбор диаметра отверстий").pack()
+        self.diameter_input = ttk.Entry(self.right_frame)
+        self.diameter_input.insert(0, "1.0")
+        self.diameter_input.pack()
+
 
         ttk.Label(self.right_frame, text="Максимальный размер по X").pack()
         self.x_size = ttk.Entry(self.right_frame)
@@ -135,6 +165,7 @@ class App(ttk.Frame):
             hole_widget.destroy()
 
         HoleWidget.hole_widgets.clear()
+        self.diameter_input.state(['!disabled'])
 
     # Обработчики событий
     def open_file(self):
@@ -146,22 +177,35 @@ class App(ttk.Frame):
         if drl_file_path != '':
             self.clear_hole_widgets()
 
-            holes = []
-            pattern = re.compile(r'X(-?\d+)Y(-?\d+)')
             with open(drl_file_path, 'r') as f:
                 lines = f.readlines()
 
-                for line in lines:
+            holes_types = parse_holesizes(lines)
+
+            pattern = re.compile(r'X(-?\d+)Y(-?\d+)')
+            holes = {}
+
+            current_tool = None
+            for line in lines:
+                if line.startswith('T'):
+                    current_tool = line.strip()
+                else:
                     match = pattern.search(line)
                     if match:
                         x = float(match.group(1)[:-3] + '.' + match.group(1)[-3:])
                         y = float(match.group(2)[:-3] + '.' + match.group(2)[-3:])
-                        holes.append((x, y))
 
-            print(holes)
+                        if current_tool in holes:
+                            holes[current_tool].append((x, y))
+                        else:
+                            holes[current_tool] = [(x, y)]
 
-            for hole in holes:
-                self.add_hole_widget(hole[0], hole[1])
+            key = find_key_by_value(holes_types, float(self.diameter_input.get()))
+            if key in holes:
+                for hole in holes[key]:
+                    self.add_hole_widget(hole[0], hole[1])
+
+                self.diameter_input.state(['disabled'])
 
     def add_hole_widget(self, x=0.0, y=0.0) -> HoleWidget:
         hole_widget = HoleWidget(self.holes_frame)
@@ -222,7 +266,7 @@ class App(ttk.Frame):
 
 
 root = Tk()
-root.geometry('500x500')  # Устанавливаем размер окна 600x400
+root.geometry('500x540')  # Устанавливаем размер окна 600x400
 root.resizable(True, True)  # Запрещаем изменение размера окна
 root.title("CNC Hole CAM")
 
