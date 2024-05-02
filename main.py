@@ -1,7 +1,7 @@
 from datetime import datetime
 import re
 import sys
-from tkinter import Tk, ttk, TclError, filedialog, messagebox, Canvas, Frame, Scrollbar
+from tkinter import Tk, ttk, TclError, filedialog, messagebox, Canvas, Frame, Scrollbar, BooleanVar
 
 from cnc_hole_lib import get_gcode
 
@@ -120,13 +120,17 @@ class App(ttk.Frame):
 
         ttk.Label(self.right_frame, text="Скорость работы").pack()
         self.work_speed = ttk.Entry(self.right_frame)
-        self.work_speed.insert(0, "300")
+        self.work_speed.insert(0, "500")
         self.work_speed.pack()
 
         ttk.Label(self.right_frame, text="Скорость углубления").pack()
         self.plunge_speed = ttk.Entry(self.right_frame)
-        self.plunge_speed.insert(0, "100")
+        self.plunge_speed.insert(0, "3")
         self.plunge_speed.pack()
+
+        self.iterations_enabled_var = BooleanVar(value=False)
+        self.iterations_enabled = ttk.Checkbutton(self.right_frame, text="Итеративное сверление", variable=self.iterations_enabled_var, command=self.toggle_entries)
+        self.iterations_enabled.pack()
 
         ttk.Label(self.right_frame, text="Шаг сверления").pack()
         self.plunge_step = ttk.Entry(self.right_frame)
@@ -134,11 +138,11 @@ class App(ttk.Frame):
         self.plunge_step.pack()
 
         ttk.Label(self.right_frame, text="Кол-во итераций сверления").pack()
-        self.plunge_iterations = ttk.Entry(self.right_frame)
-        self.plunge_iterations.insert(0, "4")
-        self.plunge_iterations.pack()
+        self.lowering_iterations = ttk.Entry(self.right_frame)
+        self.lowering_iterations.insert(0, "4")
+        self.lowering_iterations.pack()
 
-        ttk.Label(self.right_frame, text="Высота подъёма между шагами").pack()
+        ttk.Label(self.right_frame, text="Высота подъёма").pack()
         self.lift_h = ttk.Entry(self.right_frame)
         self.lift_h.insert(0, "0.5")
         self.lift_h.pack()
@@ -155,6 +159,7 @@ class App(ttk.Frame):
         self.button_create_gcode.pack()
 
         self.image_icon = ""
+        self.toggle_entries()
 
     def on_holes_frame_configure(self, event):
         self.holes_canvas.configure(scrollregion=self.holes_canvas.bbox("all"))
@@ -166,6 +171,14 @@ class App(ttk.Frame):
 
         HoleWidget.hole_widgets.clear()
         self.diameter_input.state(['!disabled'])
+
+    def toggle_entries(self):
+        if self.iterations_enabled_var.get():
+            self.plunge_step.state(['!disabled'])
+            self.lowering_iterations.state(['!disabled'])
+        else:
+            self.plunge_step.state(['disabled'])
+            self.lowering_iterations.state(['disabled'])
 
     # Обработчики событий
     def open_file(self):
@@ -240,6 +253,13 @@ class App(ttk.Frame):
             if hole_id == 0:
                 messagebox.showerror("Нет координат", "Координаты не указаны для создания g-code")
 
+            if not bool(self.iterations_enabled_var.get()):
+                plunge_step = round(float(self.plunge_depth.get()),2)
+                lowering_iters = 1
+            else:
+                plunge_step = round(float(self.plunge_step.get()), 2)
+                lowering_iters = int(self.lowering_iterations.get())
+
             variables = {
                 'platform': self.platform_selector.get(),
                 'holes_coords': holes_coords,
@@ -247,9 +267,9 @@ class App(ttk.Frame):
                 'X_size': x_size,
                 'Y_size': y_size,
                 'lift_h': float(self.lift_h.get()),
-                'lowering_iters': int(self.plunge_iterations.get()),
+                'lowering_iters': lowering_iters,
                 'depth_material': round(float(self.plunge_depth.get()),2),
-                'plunge_step': round(float(self.plunge_step.get()),2),
+                'plunge_step': plunge_step,
                 'thrust_v': int(self.thrust_speed.get()),
                 'work_v': int(self.work_speed.get()),
                 'plunge_v': int(self.plunge_speed.get()),
@@ -266,14 +286,14 @@ class App(ttk.Frame):
 
 
 root = Tk()
-root.geometry('500x540')  # Устанавливаем размер окна 600x400
+root.geometry('500x580')  # Устанавливаем размер окна 600x400
 root.resizable(True, True)  # Запрещаем изменение размера окна
 root.title("CNC Hole CAM")
 
 # Отладка интерфейса
 if len(sys.argv) >= 2:
     if sys.argv[1] == '--build':
-        from TkDeb.TkDeb import Debugger
+        from third_party.TkDeb.TkDeb import Debugger
 
         Debugger(root)
 
