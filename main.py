@@ -113,6 +113,11 @@ class App(ttk.Frame):
         self.zero_selector.current(0)
         self.zero_selector.pack()
 
+        ttk.Label(self.right_frame, text="Конечная зеркальность координат").pack()
+        self.mirroring_selector = ttk.Combobox(self.right_frame, values=["нет", "относительно оси OY"])
+        self.mirroring_selector.current(0)
+        self.mirroring_selector.pack()
+
         ttk.Label(self.right_frame, text="Скорость холостого хода").pack()
         self.thrust_speed = ttk.Entry(self.right_frame)
         self.thrust_speed.insert(0, "500")
@@ -236,16 +241,28 @@ class App(ttk.Frame):
 
             hole_id = 0
             zero_type = self.zero_selector.get()
+            mirroring_type = self.mirroring_selector.get()
             x_size = round(float(self.x_size.get()),2)
             y_size = round(float(self.y_size.get()),2)
             for widget in HoleWidget.hole_widgets:
                 try:
                     xy = widget.get_coordinates()
                     hole_id += 1
-                    if zero_type == 'центр':
-                        holes_coords.append({'id': hole_id, 'X': round(xy[0]-x_size/2,2), 'Y': round(xy[1]+y_size/2,2)})
-                    else:
-                        holes_coords.append({'id': hole_id, 'X': round(xy[0],2), 'Y': round(xy[1],2)})
+
+                    match zero_type:
+                        case 'центр':
+                            xy[0] = xy[0]-x_size/2
+                            xy[1] = xy[1]+y_size/2
+                        case _:
+                            pass
+
+                    match mirroring_type:
+                        case 'относительно оси OY':
+                            xy[0] = -xy[0]
+                        case _:
+                            pass
+
+                    holes_coords.append({'id': hole_id, 'X': round(xy[0], 2), 'Y': round(xy[1], 2)})
 
                 except TclError:
                     pass
@@ -286,7 +303,7 @@ class App(ttk.Frame):
 
 
 root = Tk()
-root.geometry('500x580')  # Устанавливаем размер окна 600x400
+root.geometry('500x600')  # Устанавливаем размер окна 600x400
 root.resizable(True, True)  # Запрещаем изменение размера окна
 root.title("CNC Hole CAM")
 
