@@ -27,6 +27,41 @@ def parse_holesizes(lines):
     return holesizes
 
 
+def parse_drill_holes(lines):
+    holes = {}
+    current_tool = None
+    tool_pattern = re.compile(r'^T\d+$')
+    coord_pattern = re.compile(r'X(-?\d+(?:\.\d+)?)Y(-?\d+(?:\.\d+)?)')
+
+    def to_coord(value: str) -> float:
+        if '.' in value:
+            return float(value)
+        if len(value.lstrip('-')) < 3:
+            raise ValueError(value)
+        return float(value[:-3] + '.' + value[-3:])
+
+    for line in lines:
+        stripped = line.strip()
+        # Неизвестные строки заголовка (FMAT, G-коды, комментарии, M30 и т.п.) просто пропускаются
+        if tool_pattern.match(stripped):
+            current_tool = stripped
+            continue
+
+        match = coord_pattern.search(stripped)
+        if match and current_tool:
+            try:
+                hole = (to_coord(match.group(1)), to_coord(match.group(2)))
+            except ValueError:
+                continue
+
+            if current_tool in holes:
+                holes[current_tool].append(hole)
+            else:
+                holes[current_tool] = [hole]
+
+    return holes
+
+
 class HoleWidget(ttk.Frame):
 
     hole_widgets = []
@@ -193,30 +228,12 @@ class App(ttk.Frame):
         drl_file_path = filedialog.askopenfilename(filetypes=[("DRL files", "*.drl")])
 
         if drl_file_path != '':
-            self.clear_hole_widgets()
-
             with open(drl_file_path, 'r') as f:
                 lines = f.readlines()
 
             holes_types = parse_holesizes(lines)
 
-            pattern = re.compile(r'X(-?\d+)Y(-?\d+)')
-            holes = {}
-
-            current_tool = None
-            for line in lines:
-                if line.startswith('T'):
-                    current_tool = line.strip()
-                else:
-                    match = pattern.search(line)
-                    if match:
-                        x = float(match.group(1)[:-3] + '.' + match.group(1)[-3:])
-                        y = float(match.group(2)[:-3] + '.' + match.group(2)[-3:])
-
-                        if current_tool in holes:
-                            holes[current_tool].append((x, y))
-                        else:
-                            holes[current_tool] = [(x, y)]
+            holes = parse_drill_holes(lines)
 
             key = find_key_by_value(holes_types, float(self.diameter_input.get()))
             if key in holes:
